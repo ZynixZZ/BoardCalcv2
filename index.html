@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Whiteboard</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Add futuristic grid overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: 
+                linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            transform: rotate(45deg);
+            animation: gridMove 30s linear infinite;
+        }
+
+        .controls {
+            margin: 20px;
+            padding: 15px;
+            background: rgba(30, 30, 30, 0.8);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            border-radius: 50%;
+            margin: 0 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        #canvas {
+            background: rgba(10, 10, 10, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .eraser {
+            background: #1a1a1a !important;
+            border: 2px solid rgba(0, 255, 255, 0.3) !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .eraser svg {
+            width: 24px;
+            height: 24px;
+            color: rgba(0, 255, 255, 0.8);
+        }
+
+        .active {
+            border: 2px solid rgba(0, 255, 255, 0.8) !important;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+
+        @keyframes gridMove {
+            0% {
+                transform: rotate(45deg) translate(-50%, -50%);
+            }
+            100% {
+                transform: rotate(45deg) translate(0%, 0%);
+            }
+        }
+
+        .calculator {
+            position: fixed;
+            bottom: 20px;
+            right: -300px; /* Start off-screen */
+            background: rgba(30, 30, 30, 0.8);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+            padding: 15px;
+            z-index: 2;
+            transition: right 0.3s ease-in-out;
+            width: 280px; /* Fixed width */
+        }
+
+        .calculator.visible {
+            right: 20px;
+        }
+
+        .calc-display {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            font-family: monospace;
+            font-size: 20px;
+            text-align: right;
+            border-radius: 8px;
+        }
+
+        .calc-equation {
+            width: 100%;
+            padding: 5px 10px;
+            margin-bottom: 5px;
+            background: transparent;
+            border: none;
+            color: rgba(0, 255, 255, 0.5);
+            font-family: monospace;
+            font-size: 16px;
+            text-align: right;
+            border-radius: 8px;
+        }
+
+        .calc-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .calc-btn {
+            padding: 10px;
+            background: rgba(40, 40, 40, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .calc-btn:hover {
+            background: rgba(60, 60, 60, 0.9);
+            border-color: rgba(0, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        .calc-btn.operator {
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .calc-btn.equals {
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        .size-controls {
+            display: inline-flex;
+            gap: 5px;
+            background: rgba(30, 30, 30, 0.8);
+            padding: 5px;
+            border-radius: 25px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .size-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .size-btn:hover {
+            transform: scale(1.1);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+
+        .size-btn.active {
+            border-color: rgba(0, 255, 255, 0.8);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+        }
+
+        .dot {
+            background: rgba(0, 255, 255, 0.8);
+            border-radius: 50%;
+        }
+
+        .dot.small {
+            width: 4px;
+            height: 4px;
+        }
+
+        .dot.medium {
+            width: 8px;
+            height: 8px;
+        }
+
+        .dot.large {
+            width: 12px;
+            height: 12px;
+        }
+
+        .calc-toggle {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(0, 255, 255, 0.2);
+            border-radius: 50%;
+            background: rgba(30, 30, 30, 0.8);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            margin-left: 0;
+            color: rgba(0, 255, 255, 0.8);
+        }
+
+        .calc-toggle:hover {
+            transform: scale(1.1);
+            border-color: rgba(0, 255, 255, 0.4);
+        }
+
+        .bottom-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 2;
+        }
+
+        .calc-btn.slope-btn {
+            background: rgba(0, 255, 255, 0.15);
+            font-weight: bold;
+        }
+
+        .slope-mode {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .slope-mode.visible {
+            display: block;
+        }
+
+        .slope-table {
+            margin-top: 10px;
+            font-family: monospace;
+            color: rgba(0, 255, 255, 0.8);
+            white-space: pre;
+            background: rgba(10, 10, 10, 0.9);
+            padding: 8px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .intercepts {
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            font-family: monospace;
+            font-size: 14px;
+            border-radius: 8px;
+            display: none;
+            white-space: pre-line;
+            max-height: 200px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 255, 255, 0.3) rgba(10, 10, 10, 0.9);
+        }
+
+        /* Scrollbar styles for webkit browsers */
+        .intercepts::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .intercepts::-webkit-scrollbar-track {
+            background: rgba(10, 10, 10, 0.9);
+            border-radius: 4px;
+        }
+
+        .intercepts::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .intercepts::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 255, 0.5);
+        }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .intercepts {
+                max-height: 150px;
+                font-size: 13px;
+                padding: 10px;
+                margin: 8px 0;
+                /* Better touch scrolling */
+                touch-action: pan-y;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+
+        .calc-btn.intercept-btn {
+            background: rgba(0, 255, 255, 0.15);
+            font-weight: bold;
+        }
+
+        .secret-trigger {
+            position: fixed;
+            top: 5px;
+            left: 5px;
+            width: 15px;
+            height: 15px;
+            background: transparent;
+            border: none;
+            cursor: default;
+            z-index: 1000;
+            opacity: 0.02;
+        }
+
+        .secret-trigger:hover {
+            opacity: 0.05;
+        }
+
+        .secret-form {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 30, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            z-index: 2000;
+        }
+
+        .secret-form input {
+            display: block;
+            width: 200px;
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            border-radius: 5px;
+        }
+
+        .secret-form button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .granted-form {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 0;  /* Changed to 0 to accommodate header */
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+            z-index: 2001;
+            color: rgba(0, 255, 255, 0.8);
+            font-family: monospace;
+        }
+
+        .granted-form-header {
+            padding: 10px 20px;
+            background: rgba(0, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px 15px 0 0;
+            cursor: move;
+            user-select: none;
+        }
+
+        .granted-form-content {
+            padding: 20px;
+        }
+
+        .remind-btn {
+            padding: 10px 20px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: monospace;
+            transition: all 0.3s ease;
+        }
+
+        .remind-btn:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .reminder-list {
+            margin-top: 20px;
+            color: rgba(0, 255, 255, 0.8);
+            font-family: monospace;
+        }
+
+        .reminder-input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            color: rgba(0, 255, 255, 0.8);
+            border-radius: 5px;
+            display: none;
+        }
+
+        .reminder-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 2px solid rgba(0, 255, 255, 0.2);
+            padding-left: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .delete-btn {
+            padding: 10px 20px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            color: rgba(255, 0, 0, 0.8);
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: monospace;
+            transition: all 0.3s ease;
+            margin-left: 10px;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 0, 0, 0.2);
+            transform: scale(1.05);
+        }
+
+        .reminder-item.deletable {
+            cursor: pointer;
+            background: rgba(255, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .reminder-item.deletable:hover {
+            background: rgba(255, 0, 0, 0.2);
+        }
+
+        /* Add these styles */
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 25px;
+            height: 25px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.2);
+            color: rgba(255, 0, 0, 0.8);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 0, 0, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* Update granted-form to support absolute positioning of close button */
+        .granted-form {
+            position: fixed;
+            /* ... existing styles ... */
+            position: relative;  /* Add this line */
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="color-btn" style="background: #000000" onclick="setColor('#000000')"></button>
+        <button class="color-btn" style="background: #FF0000" onclick="setColor('#FF0000')"></button>
+        <button class="color-btn" style="background: #00FF00" onclick="setColor('#00FF00')"></button>
+        <button class="color-btn" style="background: #0000FF" onclick="setColor('#0000FF')"></button>
+        <button class="color-btn" style="background: #FF00FF" onclick="setColor('#FF00FF')"></button>
+        <button class="color-btn eraser" onclick="setEraser()" title="Eraser">
+            <svg viewBox="0 0 24 24">
+                <path fill="currentColor" d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0z"/>
+            </svg>
+        </button>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <div class="calculator">
+        <input type="text" class="calc-equation" readonly value="">
+        <input type="text" class="calc-display" readonly value="0">
+        <div class="calc-buttons">
+            <button class="calc-btn">7</button>
+            <button class="calc-btn">8</button>
+            <button class="calc-btn">9</button>
+            <button class="calc-btn operator">÷</button>
+            <button class="calc-btn">4</button>
+            <button class="calc-btn">5</button>
+            <button class="calc-btn">6</button>
+            <button class="calc-btn operator">×</button>
+            <button class="calc-btn">1</button>
+            <button class="calc-btn">2</button>
+            <button class="calc-btn">3</button>
+            <button class="calc-btn operator">-</button>
+            <button class="calc-btn">0</button>
+            <button class="calc-btn fraction">/</button>
+            <button class="calc-btn operator">C</button>
+            <button class="calc-btn operator">+</button>
+            <button class="calc-btn equals" style="grid-column: span 4;">=</button>
+            <button class="calc-btn slope-btn" style="grid-column: span 4;">Slope Table</button>
+            <button class="calc-btn intercept-btn" style="grid-column: span 4;">Find Intercepts</button>
+        </div>
+        <div class="intercepts"></div>
+    </div>
+
+    <div class="slope-mode">
+        <input type="text" class="calc-equation" placeholder="Enter x range (e.g. -3,3)" id="xRange">
+        <div class="slope-table"></div>
+    </div>
+
+    <div class="bottom-controls">
+        <div class="size-controls">
+            <button class="size-btn active" onclick="setSize('small')" title="Small">
+                <span class="dot small"></span>
+            </button>
+            <button class="size-btn" onclick="setSize('medium')" title="Medium">
+                <span class="dot medium"></span>
+            </button>
+            <button class="size-btn" onclick="setSize('large')" title="Large">
+                <span class="dot large"></span>
+            </button>
+        </div>
+        <button class="calc-toggle" onclick="toggleCalculator()">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                <path fill="currentColor" d="M7 7h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zM7 11h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zM7 15h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2z"/>
+            </svg>
+        </button>
+    </div>
+
+    <button class="secret-trigger" onclick="toggleSecret()"></button>
+    <form class="secret-form" onsubmit="handleSecret(event)">
+        <input type="text" placeholder="Login">
+        <input type="password" placeholder="Password">
+        <button type="submit">Submit</button>
+    </form>
+
+    <div class="granted-form">
+        <button class="close-btn" onclick="closeGrantedForm()">×</button>
+        <div class="granted-form-header">Granted Access</div>
+        <div class="granted-form-content">
+            <button class="remind-btn">Make remind</button>
+            <button class="delete-btn">Delete remind</button>
+            <input type="text" class="reminder-input" placeholder="Enter your reminder...">
+            <div class="reminder-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentColor = '#000000';
+        let isEraser = false;
+        const buttons = document.querySelectorAll('.color-btn');
+        let currentSize = 'small';
+        const sizes = {
+            small: 3,
+            medium: 8,
+            large: 15
+        };
+
+        function setColor(color) {
+            currentColor = color;
+            isEraser = false;
+            updateActiveButton(color);
+        }
+
+        function setEraser() {
+            isEraser = true;
+            updateActiveButton('eraser');
+        }
+
+        function updateActiveButton(selected) {
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if ((selected === 'eraser' && btn.classList.contains('eraser')) ||
+                    (btn.style.background === selected)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function setSize(size) {
+            currentSize = size;
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.size-btn[onclick="setSize('${size}')"]`).classList.add('active');
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (isEraser) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = 40;
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = sizes[currentSize];
+            }
+            
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : currentColor;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+            // Reset composite operation to default
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        const display = document.querySelector('.calc-display');
+        const equation = document.querySelector('.calc-equation');
+        const calculatorButtons = document.querySelectorAll('.calc-btn');
+        let firstOperand = null;
+        let operator = null;
+        let resetDisplay = false;
+        let isFraction = false;
+        let numerator = null;
+
+        function gcd(a, b) {
+            return b === 0 ? a : gcd(b, a % b);
+        }
+
+        function simplifyFraction(num, den) {
+            const divisor = gcd(Math.abs(num), Math.abs(den));
+            return [num / divisor, den / divisor];
+        }
+
+        function formatFraction(num, den) {
+            if (den === 1) return num.toString();
+            if (num === 0) return "0";
+            
+            // Handle improper fractions
+            if (Math.abs(num) >= Math.abs(den)) {
+                const whole = Math.floor(num / den);
+                const remainder = Math.abs(num % den);
+                if (remainder === 0) return whole.toString();
+                return `${whole} ${remainder}/${Math.abs(den)}`;
+            }
+            
+            return `${num}/${den}`;
+        }
+
+        function parseFractionString(str) {
+            // Handle whole numbers with fractions (e.g., "3 1/2")
+            const wholeFractionRegex = /^(-?\d+)\s+(-?\d+)\/(-?\d+)$/;
+            const fractionRegex = /^(-?\d+)\/(-?\d+)$/;
+            const wholeRegex = /^(-?\d+)$/;
+
+            let match;
+            if ((match = str.match(wholeFractionRegex))) {
+                const whole = parseInt(match[1]);
+                const num = parseInt(match[2]);
+                const den = parseInt(match[3]);
+                return [(Math.abs(whole) * den + num) * Math.sign(whole), den];
+            } else if ((match = str.match(fractionRegex))) {
+                return [parseInt(match[1]), parseInt(match[2])];
+            } else if ((match = str.match(wholeRegex))) {
+                return [parseInt(match[1]), 1];
+            }
+            return [0, 1];
+        }
+
+        calculatorButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const value = button.textContent;
+                
+                if (value >= '0' && value <= '9') {
+                    if (resetDisplay) {
+                        display.value = value;
+                        resetDisplay = false;
+                    } else {
+                        display.value = display.value === '0' ? value : display.value + value;
+                    }
+                } else if (value === '/') {
+                    if (!display.value.includes('/')) {
+                        display.value += '/';
+                    }
+                } else if (value === 'C') {
+                    display.value = '0';
+                    equation.value = '';
+                    firstOperand = null;
+                    operator = null;
+                    isFraction = false;
+                    numerator = null;
+                    document.querySelector('.intercepts').style.display = 'none';
+                } else if (value === '=') {
+                    if (operator && firstOperand !== null) {
+                        equation.value += ` ${display.value} =`;
+                        const [num1, den1] = parseFractionString(firstOperand.toString());
+                        const [num2, den2] = parseFractionString(display.value);
+                        let resultNum, resultDen;
+
+                        switch (operator) {
+                            case '+':
+                                resultNum = num1 * den2 + num2 * den1;
+                                resultDen = den1 * den2;
+                                break;
+                            case '-':
+                                resultNum = num1 * den2 - num2 * den1;
+                                resultDen = den1 * den2;
+                                break;
+                            case '×':
+                                resultNum = num1 * num2;
+                                resultDen = den1 * den2;
+                                break;
+                            case '÷':
+                                resultNum = num1 * den2;
+                                resultDen = den1 * num2;
+                                break;
+                        }
+
+                        [resultNum, resultDen] = simplifyFraction(resultNum, resultDen);
+                        display.value = formatFraction(resultNum, resultDen);
+                        firstOperand = null;
+                        operator = null;
+                    }
+                } else if (['+', '-', '×', '÷'].includes(value)) {
+                    operator = value;
+                    firstOperand = display.value;
+                    equation.value = `${display.value} ${value}`;
+                    resetDisplay = true;
+                }
+            });
+        });
+
+        function toggleCalculator() {
+            const calculator = document.querySelector('.calculator');
+            calculator.classList.toggle('visible');
+            
+            // Update the toggle button appearance
+            const toggleBtn = document.querySelector('.calc-toggle');
+            if (calculator.classList.contains('visible')) {
+                toggleBtn.style.borderColor = 'rgba(0, 255, 255, 0.8)';
+                toggleBtn.style.boxShadow = '0 0 15px rgba(0, 255, 255, 0.4)';
+            } else {
+                toggleBtn.style.borderColor = 'rgba(0, 255, 255, 0.2)';
+                toggleBtn.style.boxShadow = 'none';
+            }
+        }
+
+        let isInSlopeMode = false;
+
+        document.querySelector('.slope-btn').addEventListener('click', () => {
+            const slopeMode = document.querySelector('.slope-mode');
+            const calcButtons = document.querySelector('.calc-buttons');
+            isInSlopeMode = !isInSlopeMode;
+            
+            slopeMode.classList.toggle('visible');
+            
+            if (isInSlopeMode) {
+                // Parse current display value as slope (m)
+                const m = parseFloat(display.value) || 0;
+                // Use equation value as y-intercept (b)
+                const b = parseFloat(equation.value) || 0;
+                
+                display.value = `y = ${m}x ${b >= 0 ? '+' : ''}${b}`;
+                document.querySelector('.slope-btn').textContent = 'Back to Calculator';
+            } else {
+                display.value = '0';
+                equation.value = '';
+                document.querySelector('.slope-btn').textContent = 'Slope Table';
+            }
+        });
+
+        document.getElementById('xRange').addEventListener('change', function() {
+            const range = this.value.split(',').map(Number);
+            const equation = display.value.toLowerCase().replace(/\s+/g, '');
+            const match = equation.match(/y=(-?\d*\.?\d*)x([+-]\d*\.?\d*)?/);
+            
+            if (!match || range.length !== 2 || isNaN(range[0]) || isNaN(range[1])) {
+                document.querySelector('.slope-table').textContent = 
+                    'Please enter a valid range (e.g. -3,3)\nand ensure calculator shows slope equation';
+                return;
+            }
+
+            const m = match[1] === '-' ? -1 : match[1] === '' ? 1 : parseFloat(match[1]);
+            const b = match[2] ? parseFloat(match[2]) : 0;
+
+            let table = `Equation: y = ${m}x ${b >= 0 ? '+' : ''}${b}\n\n`;
+            table += 'x | y\n---------\n';
+            
+            for (let x = range[0]; x <= range[1]; x++) {
+                const y = m * x + b;
+                table += `${x} | ${y}\n`;
+            }
+
+            document.querySelector('.slope-table').textContent = table;
+        });
+
+        document.querySelector('.intercept-btn').addEventListener('click', () => {
+            const interceptsDiv = document.querySelector('.intercepts');
+            let m, b;
+
+            // Get slope (m) and y-intercept (b) from calculator
+            if (firstOperand !== null && operator !== null) {
+                m = parseFloat(firstOperand);
+                b = parseFloat(display.value);
+            } else {
+                m = parseFloat(display.value);
+                b = 0;
+            }
+
+            // Ensure we have valid numbers
+            if (isNaN(m)) m = 0;
+            if (isNaN(b)) b = 0;
+
+            // Generate output
+            let output = `Equation: y = ${m}x ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)}\n\n`;
+            output += `Slope (m): ${m}\n`;
+            output += `Y-intercept: (0, ${b})\n`;
+
+            // Calculate x-intercept
+            if (m === 0) {
+                if (b === 0) {
+                    output += `X-intercept: All points (horizontal line at y = 0)\n`;
+                } else {
+                    output += `X-intercept: No intercept (horizontal line at y = ${b})\n`;
+                }
+            } else {
+                const xIntercept = -b / m;
+                output += `X-intercept: (${xIntercept}, 0)\n`;
+            }
+
+            // Line characteristics
+            output += `\nLine characteristics:\n`;
+            if (m > 0) {
+                output += `• Line rises from left to right\n`;
+                output += `• For every +1 in x, y increases by ${m}\n`;
+            } else if (m < 0) {
+                output += `• Line falls from left to right\n`;
+                output += `• For every +1 in x, y decreases by ${Math.abs(m)}\n`;
+            } else {
+                output += `• Horizontal line\n`;
+                output += `• Y value remains constant at ${b}\n`;
+            }
+
+            // Extended point list
+            output += `\nPoints on the line:\n`;
+            // Show points from -20 to 20
+            for (let x = -20; x <= 20; x++) {
+                const y = m * x + b;
+                // Format y to 2 decimal places if it's not a whole number
+                const formattedY = Number.isInteger(y) ? y : y.toFixed(2);
+                output += `• (${x}, ${formattedY})\n`;
+            }
+
+            // Add note about infinite points
+            output += `\nNote: These are just sample points.\n`;
+            output += `The line continues infinitely in both directions.\n`;
+            output += `\nTo find any point:\n`;
+            output += `1. Choose any x value\n`;
+            output += `2. Plug it into: y = ${m}x ${b >= 0 ? '+ ' + b : '- ' + Math.abs(b)}`;
+
+            interceptsDiv.textContent = output;
+            interceptsDiv.style.display = 'block';
+
+            // Scroll to top when new content is displayed
+            interceptsDiv.scrollTop = 0;
+        });
+
+        calculatorButtons.forEach(button => {
+            if (button.textContent === 'C') {
+                const originalClick = button.onclick;
+                button.onclick = () => {
+                    if (originalClick) originalClick.call(button);
+                    document.querySelector('.intercepts').style.display = 'none';
+                };
+            }
+        });
+
+        // Add touch event handlers
+        function handleStart(e) {
+            e.preventDefault(); // Prevent scrolling while drawing
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function handleMove(e) {
+            e.preventDefault();
+            if (!isDrawing) return;
+            
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+
+            if (isEraser) {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = 40;
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = sizes[currentSize];
+            }
+            
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : currentColor;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function handleEnd(e) {
+            e.preventDefault();
+            isDrawing = false;
+            ctx.beginPath();
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // Add both mouse and touch event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Add touch events
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        canvas.addEventListener('touchmove', handleMove, { passive: false });
+        canvas.addEventListener('touchend', handleEnd, { passive: false });
+
+        // Update canvas size based on screen size
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxWidth = Math.min(800, window.innerWidth - 40); // 20px padding on each side
+            const aspectRatio = 3/4; // Original aspect ratio (600/800)
+            
+            canvas.style.width = maxWidth + 'px';
+            canvas.style.height = (maxWidth * aspectRatio) + 'px';
+            
+            // Update canvas internal dimensions
+            canvas.width = maxWidth;
+            canvas.height = maxWidth * aspectRatio;
+        }
+
+        // Call resize on load and window resize
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+
+        // Add styles for better mobile experience
+        const style = document.createElement('style');
+        style.textContent = `
+            @media (max-width: 768px) {
+                body {
+                    overflow: hidden;
+                    position: fixed;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                #canvas {
+                    touch-action: none;
+                    -webkit-touch-callout: none;
+                    -webkit-user-select: none;
+                    -khtml-user-select: none;
+                    -moz-user-select: none;
+                    -ms-user-select: none;
+                    user-select: none;
+                    outline: none;
+                }
+
+                .controls {
+                    position: sticky;
+                    top: 0;
+                    z-index: 100;
+                    background: rgba(30, 30, 30, 0.95);
+                }
+
+                .color-btn, .size-btn {
+                    min-width: 44px;
+                    min-height: 44px;
+                    margin: 4px;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        function toggleSecret() {
+            const form = document.querySelector('.secret-form');
+            form.style.display = form.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function handleSecret(event) {
+            event.preventDefault();
+            const [login, pass] = event.target.querySelectorAll('input');
+            if (login.value === 'ZYN' && pass.value === 'Duldqmc4') {
+                alert('Access granted');
+                console.log('Secret access granted');
+                const grantedForm = document.querySelector('.granted-form');
+                grantedForm.style.display = 'block';
+                makeDraggable(grantedForm);
+                loadReminders();
+            } else {
+                alert('Incorrect login or password');
+                console.log('Secret access denied');
+            }
+            toggleSecret();
+        }
+
+        function makeDraggable(element) {
+            const header = element.querySelector('.granted-form-header');
+            let isDragging = false;
+            let currentX;
+            let currentY;
+            let initialX;
+            let initialY;
+            let xOffset = 0;
+            let yOffset = 0;
+
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+
+            function dragStart(e) {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+
+                if (e.target === header) {
+                    isDragging = true;
+                }
+            }
+
+            function drag(e) {
+                if (isDragging) {
+                    e.preventDefault();
+                    currentX = e.clientX - initialX;
+                    currentY = e.clientY - initialY;
+
+                    xOffset = currentX;
+                    yOffset = currentY;
+
+                    setTranslate(currentX, currentY, element);
+                }
+            }
+
+            function setTranslate(xPos, yPos, el) {
+                el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+            }
+
+            function dragEnd(e) {
+                initialX = currentX;
+                initialY = currentY;
+                isDragging = false;
+            }
+        }
+
+        document.querySelector('.remind-btn').addEventListener('click', function() {
+            const input = document.querySelector('.reminder-input');
+            input.style.display = input.style.display === 'block' ? 'none' : 'block';
+            if (input.style.display === 'block') {
+                input.focus();
+            }
+        });
+
+        document.querySelector('.reminder-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && this.value.trim() !== '') {
+                const list = document.querySelector('.reminder-list');
+                const reminder = document.createElement('div');
+                reminder.className = 'reminder-item';
+                reminder.textContent = '• ' + this.value;
+                list.appendChild(reminder);
+                this.value = '';
+                saveReminders();
+            }
+        });
+
+        function saveReminders() {
+            const reminders = [];
+            document.querySelectorAll('.reminder-item').forEach(item => {
+                reminders.push(item.textContent.substring(2)); // Remove the bullet point
+            });
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+        }
+
+        function loadReminders() {
+            const savedReminders = localStorage.getItem('reminders');
+            if (savedReminders) {
+                const reminders = JSON.parse(savedReminders);
+                const list = document.querySelector('.reminder-list');
+                reminders.forEach(text => {
+                    const reminder = document.createElement('div');
+                    reminder.className = 'reminder-item';
+                    reminder.textContent = '• ' + text;
+                    list.appendChild(reminder);
+                });
+            }
+        }
+
+        let deleteMode = false;
+
+        document.querySelector('.delete-btn').addEventListener('click', function() {
+            deleteMode = !deleteMode;
+            const reminders = document.querySelectorAll('.reminder-item');
+            
+            if (deleteMode) {
+                this.style.background = 'rgba(255, 0, 0, 0.3)';
+                reminders.forEach(reminder => {
+                    reminder.classList.add('deletable');
+                });
+            } else {
+                this.style.background = 'rgba(255, 0, 0, 0.1)';
+                reminders.forEach(reminder => {
+                    reminder.classList.remove('deletable');
+                });
+            }
+        });
+
+        document.querySelector('.reminder-list').addEventListener('click', function(e) {
+            if (deleteMode && e.target.classList.contains('reminder-item')) {
+                e.target.remove();
+                saveReminders();
+            }
+        });
+
+        function closeGrantedForm() {
+            document.querySelector('.granted-form').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
